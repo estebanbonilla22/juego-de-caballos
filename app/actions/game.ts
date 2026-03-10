@@ -57,10 +57,14 @@ export async function purchasePoints(): Promise<{ success: boolean; error?: stri
   return { success: true };
 }
 
-export async function createRoom() {
+export async function createRoom(maxPlayers: number = 4) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado", roomId: null, code: null };
+
+  if (maxPlayers < 2 || maxPlayers > 4) {
+    return { error: "maxPlayers debe ser entre 2 y 4", roomId: null, code: null };
+  }
 
   const profile = await getProfile();
   const displayName = profile?.display_name || profile?.email || "Jugador";
@@ -75,7 +79,7 @@ export async function createRoom() {
 
   const { data: room, error: roomErr } = await supabase
     .from("game_rooms")
-    .insert({ code, host_id: user.id })
+    .insert({ code, host_id: user.id, max_players: maxPlayers })
     .select("id")
     .single();
 
@@ -113,19 +117,20 @@ export async function joinRoom(code: string) {
 
   const { data: room } = await supabase
     .from("game_rooms")
-    .select("id, status")
+    .select("id, status, max_players")
     .eq("code", code.toUpperCase())
     .single();
 
   if (!room) return { error: "Sala no encontrada", roomId: null };
   if (room.status !== "waiting") return { error: "La partida ya empezó", roomId: null };
 
+  const maxPlayers = room.max_players ?? 4;
   const { count } = await supabase
     .from("room_players")
     .select("id", { count: "exact", head: true })
     .eq("room_id", room.id);
 
-  if ((count ?? 0) >= 4) return { error: "La sala está llena", roomId: null };
+  if ((count ?? 0) >= maxPlayers) return { error: "La sala está llena", roomId: null };
 
   const { data: existing } = await supabase
     .from("room_players")

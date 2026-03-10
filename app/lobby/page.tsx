@@ -13,13 +13,14 @@ export default function LobbyPage() {
   }, [router]);
   const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
   const [joinCode, setJoinCode] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(4);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleCreate() {
     setLoading(true);
     setError("");
-    const { error: err, roomId, code } = await createRoom();
+    const { error: err, roomId, code } = await createRoom(maxPlayers);
     setLoading(false);
     if (err) {
       setError(err);
@@ -74,8 +75,20 @@ export default function LobbyPage() {
         {mode === "create" && (
           <div className="space-y-4">
             <p className="text-slate-400 text-sm">
-              Se creará una sala para 4 jugadores. Comparte el código con tus amigos.
+              Se creará una sala para hasta {maxPlayers} jugadores. Comparte el código con tus amigos.
             </p>
+            <label className="block text-sm text-slate-300">
+              Máximo de jugadores
+              <select
+                value={maxPlayers}
+                onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                className="mt-2 w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2"
+              >
+                <option value={2}>2 jugadores</option>
+                <option value={3}>3 jugadores</option>
+                <option value={4}>4 jugadores</option>
+              </select>
+            </label>
             <button
               onClick={handleCreate}
               disabled={loading}

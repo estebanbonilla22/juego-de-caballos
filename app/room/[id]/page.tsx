@@ -51,7 +51,7 @@ export default function RoomPage() {
   const router = useRouter();
   const roomId = params.id as string;
 
-  const [room, setRoom] = useState<{ code: string; status: string; host_id: string } | null>(null);
+  const [room, setRoom] = useState<{ code: string; status: string; host_id: string; max_players: number } | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [profile, setProfile] = useState<{ id?: string; points: number; display_name?: string } | null>(null);
@@ -64,7 +64,7 @@ export default function RoomPage() {
     const supabase = createSupabaseClient();
     const { data: roomData } = await supabase
       .from("game_rooms")
-      .select("code, status, host_id")
+      .select("code, status, host_id, max_players")
       .eq("id", roomId)
       .single();
     setRoom(roomData || null);
@@ -220,7 +220,7 @@ export default function RoomPage() {
 
         {gameState?.phase === "waiting" && (
           <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-lg font-bold mb-4">Jugadores ({players.length}/4)</h2>
+            <h2 className="text-lg font-bold mb-4">Jugadores ({players.length}/{room?.max_players ?? 4})</h2>
             <div className="space-y-2 mb-6">
               {players.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-2 border-b border-white/5">
@@ -258,11 +258,11 @@ export default function RoomPage() {
                   <>
                     {players.length < 2 ? (
                       <p className="text-slate-400 text-sm mb-2">
-                        Se requieren al menos 2 jugadores para iniciar ({players.length}/4).
+                        Se requieren al menos 2 jugadores para iniciar ({players.length}/{room?.max_players ?? 4}).
                       </p>
-                    ) : players.length < 4 ? (
+                    ) : players.length < (room?.max_players ?? 4) ? (
                       <p className="text-slate-400 text-sm mb-2">
-                        Esperando que más jugadores se unan ({players.length}/4), se puede iniciar con 2 o más.
+                        Esperando que más jugadores se unan ({players.length}/{room?.max_players ?? 4}), se puede iniciar con 2 o más.
                       </p>
                     ) : !allPlayersReady ? (
                       <p className="text-slate-400 text-sm mb-2">
