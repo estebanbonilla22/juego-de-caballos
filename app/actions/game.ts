@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 const INITIAL_POINTS = 1000;
@@ -181,10 +181,11 @@ export async function setBet(roomId: string, amount: number) {
 
 export async function startGame(roomId: string) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
-  const { data: room } = await supabase
+  const { data: room } = await adminSupabase
     .from("game_rooms")
     .select("host_id, status")
     .eq("id", roomId)
@@ -193,7 +194,7 @@ export async function startGame(roomId: string) {
   if (!room || room.host_id !== user.id) return { error: "No eres el anfitrión" };
   if (room.status !== "waiting") return { error: "La partida ya empezó" };
 
-  const { data: players } = await supabase
+  const { data: players } = await adminSupabase
     .from("room_players")
     .select("user_id, display_name, bet_amount")
     .eq("room_id", roomId)
@@ -201,18 +202,32 @@ export async function startGame(roomId: string) {
 
   if (!players || players.length < 2) return { error: "Se necesitan al menos 2 jugadores" };
 
-  // Verificar que todos tienen suficientes puntos y han apostado
+  // Verificar que todos han apostado y la apuesta es válida
   for (const p of players) {
     if (!p.bet_amount || p.bet_amount < 1) return { error: "Todos deben apostar" };
-    const { data: prof } = await supabase.from("profiles").select("points").eq("id", p.user_id).single();
-    if (!prof || prof.points < p.bet_amount) return { error: `${p.display_name} no tiene suficientes puntos` };
+  }
+
+  // Verificar puntos con cliente admin (permite leer perfiles de todos jugadores)
+  const userIds = players.map((p) => p.user_id);
+  const { data: profiles } = await adminSupabase
+    .from("profiles")
+    .select("id, points")
+    .in("id", userIds);
+
+  if (!profiles) return { error: "Error al verificar perfiles" };
+
+  for (const p of players) {
+    const prof = profiles.find((x) => x.id === p.user_id);
+    if (!prof || prof.points < p.bet_amount) {
+      return { error: `${p.display_name} no tiene suficientes puntos` };
+    }
   }
 
   // Descontar apuestas de cada jugador
   for (const p of players) {
-    const { data: prof } = await supabase.from("profiles").select("points").eq("id", p.user_id).single();
+    const prof = profiles.find((x) => x.id === p.user_id);
     if (prof) {
-      await supabase.from("profiles").update({ points: prof.points - p.bet_amount }).eq("id", p.user_id);
+      await adminSupabase.from("profiles").update({ points: prof.points - p.bet_amount }).eq("id", p.user_id);
     }
   }
 
@@ -241,8 +256,8 @@ export async function startGame(roomId: string) {
     winnerSuit: "" as string,
   };
 
-  await supabase.from("game_rooms").update({ status: "playing" }).eq("id", roomId);
-  await supabase.from("game_states").update({ state, updated_at: new Date().toISOString() }).eq("room_id", roomId);
+  await adminSupabase.from("game_rooms").update({ status: "playing" }).eq("id", roomId);
+  await adminSupabase.from("game_states").update({ state, updated_at: new Date().toISOString() }).eq("room_id", roomId);
 
   revalidatePath("/");
   return { error: null };
