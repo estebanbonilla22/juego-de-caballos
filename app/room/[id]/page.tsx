@@ -161,7 +161,8 @@ export default function RoomPage() {
   const currentPlayer = gameState?.players?.[gameState.turnIndex ?? 0] ?? "";
   const myName = profile?.display_name || "";
   const isMyTurn = currentPlayer === myName;
-  const canStart = isHost && players.length === 4 && players.every((p) => p.bet_amount > 0);
+  const allPlayersReady = players.length === 4 && players.every((p) => p.bet_amount > 0);
+  const canStart = isHost && allPlayersReady;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white p-8">
@@ -251,14 +252,37 @@ export default function RoomPage() {
                 </div>
               ))}
             </div>
-            {canStart && room?.host_id && (
-              <button
-                onClick={handleStart}
-                disabled={loading}
-                className="rounded-xl bg-emerald-600 px-6 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50"
-              >
-                Iniciar partida
-              </button>
+            {room?.host_id && (
+              <div className="mt-2">
+                {isHost ? (
+                  <>
+                    {players.length < 4 ? (
+                      <p className="text-slate-400 text-sm mb-2">
+                        Esperando que se unan 4 jugadores ({players.length}/4).
+                      </p>
+                    ) : !allPlayersReady ? (
+                      <p className="text-slate-400 text-sm mb-2">
+                        Todos los jugadores deben apostar antes de iniciar.
+                      </p>
+                    ) : (
+                      <p className="text-emerald-300 text-sm mb-2">
+                        Todos listos. Puedes iniciar la partida.
+                      </p>
+                    )}
+                    <button
+                      onClick={handleStart}
+                      disabled={!allPlayersReady || loading}
+                      className="rounded-xl bg-emerald-600 px-6 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {loading ? "Cargando..." : "Iniciar partida"}
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-slate-400 text-sm">
+                    Esperando a que el anfitrión inicie la partida.
+                  </p>
+                )}
+              </div>
             )}
           </section>
         )}
