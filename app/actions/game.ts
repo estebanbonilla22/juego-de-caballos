@@ -194,7 +194,7 @@ export async function startGame(roomId: string) {
     .eq("room_id", roomId)
     .order("position");
 
-  if (!players || players.length !== 4) return { error: "Se necesitan 4 jugadores" };
+  if (!players || players.length < 2) return { error: "Se necesitan al menos 2 jugadores" };
 
   // Verificar que todos tienen suficientes puntos y han apostado
   for (const p of players) {

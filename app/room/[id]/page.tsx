@@ -161,7 +161,7 @@ export default function RoomPage() {
   const currentPlayer = gameState?.players?.[gameState.turnIndex ?? 0] ?? "";
   const myName = profile?.display_name || "";
   const isMyTurn = currentPlayer === myName;
-  const allPlayersReady = players.length === 4 && players.every((p) => p.bet_amount > 0);
+  const allPlayersReady = players.length >= 2 && players.every((p) => p.bet_amount > 0);
   const canStart = isHost && allPlayersReady;
 
   return (
@@ -256,9 +256,13 @@ export default function RoomPage() {
               <div className="mt-2">
                 {isHost ? (
                   <>
-                    {players.length < 4 ? (
+                    {players.length < 2 ? (
                       <p className="text-slate-400 text-sm mb-2">
-                        Esperando que se unan 4 jugadores ({players.length}/4).
+                        Se requieren al menos 2 jugadores para iniciar ({players.length}/4).
+                      </p>
+                    ) : players.length < 4 ? (
+                      <p className="text-slate-400 text-sm mb-2">
+                        Esperando que más jugadores se unan ({players.length}/4), se puede iniciar con 2 o más.
                       </p>
                     ) : !allPlayersReady ? (
                       <p className="text-slate-400 text-sm mb-2">
